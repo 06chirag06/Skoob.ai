@@ -42,44 +42,6 @@ const findContactByEmailsPhoneNumbersAndId = async (emails, phoneNumbers, id) =>
   });
 
 // Updating the output as required
-const updateContactInfo = (
-  contacts,
-  primaryContactId,
-  emails,
-  phoneNumbers,
-  secondaryContactIds
-) => {
-  contacts.forEach((contact) => {
-    if (contact.linkPrecedence === "primary") {
-      if (primaryContactId === null) {
-        primaryContactId = contact.id;
-        emails = [contact.email, ...emails];
-        phoneNumbers = [contact.phoneNumber, ...phoneNumbers];
-      } else {
-        let data = { ...contact };
-        data.linkPrecedence = "secondary";
-        data.linkedId = primaryContactId;
-        data.updatedAt = Date.now();
-        console.log(data.dataValues.id);
-        try {
-          updateContact(data);
-        } catch (err) {
-          res.status(500).json({
-            message: "Internal Server Error, Cannot Update Contact",
-          });
-        }
-        secondaryContactIds = [...secondaryContactIds, contact.id];
-        emails = [...emails, contact.email];
-        phoneNumbers = [...phoneNumbers, contact.phoneNumber];
-      }
-    } else {
-      secondaryContactIds = [...secondaryContactIds, contact.id];
-      emails = [...emails, contact.email];
-      phoneNumbers = [...phoneNumbers, contact.phoneNumber];
-    }
-  });
-  return [primaryContactId, emails, phoneNumbers, secondaryContactIds];
-};
 
 // Identify order API with endpoint /identify
 const identifyOrder = async (req, res) => {
@@ -103,6 +65,7 @@ const identifyOrder = async (req, res) => {
       // Find contacts by phone number
     } else if (!phoneNumber) {
       contacts = await findContactByEmail(email);
+      console.log(contacts);
       if (contacts === null) linkPrecedence = "primary";
 
       // Find contacts by email
@@ -113,7 +76,7 @@ const identifyOrder = async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ message: "Internal Server Error, Cannot Find Contact" });
+      .json({ message: "Internal Server Error, Cannot Find Initial Contact" });
   }
 
   let primaryContactId = null;
@@ -206,6 +169,45 @@ const identifyOrder = async (req, res) => {
   //   res.status(500).json(err);
   // }
 };
+
+function updateContactInfo(
+  contacts,
+  primaryContactId,
+  emails,
+  phoneNumbers,
+  secondaryContactIds
+) {
+  contacts.forEach((contact) => {
+    if (contact.linkPrecedence === "primary") {
+      if (primaryContactId === null) {
+        primaryContactId = contact.id;
+        emails = [contact.email, ...emails];
+        phoneNumbers = [contact.phoneNumber, ...phoneNumbers];
+      } else {
+        let data = { ...contact };
+        data.linkPrecedence = "secondary";
+        data.linkedId = primaryContactId;
+        data.updatedAt = Date.now();
+        console.log(data.dataValues.id);
+        try {
+          updateContact(data);
+        } catch (err) {
+          res.status(500).json({
+            message: "Internal Server Error, Cannot Update Contact",
+          });
+        }
+        secondaryContactIds = [...secondaryContactIds, contact.id];
+        emails = [...emails, contact.email];
+        phoneNumbers = [...phoneNumbers, contact.phoneNumber];
+      }
+    } else {
+      secondaryContactIds = [...secondaryContactIds, contact.id];
+      emails = [...emails, contact.email];
+      phoneNumbers = [...phoneNumbers, contact.phoneNumber];
+    }
+  });
+  return [primaryContactId, emails, phoneNumbers, secondaryContactIds];
+}
 
 // Router to identify router
 contactRouter.post("/identify", identifyOrder);
